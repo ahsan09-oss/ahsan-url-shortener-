@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AHSAN URL SHORTENER</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        .bg-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://i.ibb.co/G3vBz2yr/bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            z-index: -1;
+        }
+
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.8) 100%);
+            z-index: 0;
+        }
+
+        .main-content {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .logo-container {
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-12px); }
+        }
+
+        .logo-img {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 50px rgba(79, 172, 254, 0.5);
+            transition: all 0.3s;
+        }
+
+        .logo-img:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 70px rgba(79, 172, 254, 0.8);
+            border-color: #4facfe;
+        }
+
+        .title {
+            font-size: 2.5em;
+            font-weight: 900;
+            margin-bottom: 5px;
+            text-shadow: 0 0 30px rgba(79, 172, 254, 0.6);
+            letter-spacing: 2px;
+            background: linear-gradient(45deg, #ffffff, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1em;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+            font-weight: 300;
+        }
+
+        .input-wrapper {
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 18px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            color: white;
+            font-size: 1.05em;
+            outline: none;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .url-input:focus {
+            border-color: #4facfe;
+            box-shadow: 0 0 30px rgba(79, 172, 254, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .url-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .alias-input {
+            width: 100%;
+            padding: 14px 25px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50px;
+            color: white;
+            font-size: 0.95em;
+            outline: none;
+            transition: all 0.3s;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .alias-input:focus {
+            border-color: #4facfe;
+        }
+
+        .alias-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .alias-hint {
+            font-size: 0.8em;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+        }
+
+        .btn-shorten {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            color: white;
+            box-shadow: 0 10px 30px rgba(79, 172, 254, 0.4);
+        }
+
+        .btn-shorten:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(79, 172, 254, 0.6);
+        }
+
+        .btn-shorten:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-area {
+            display: none;
+            margin-top: 25px;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .result-area.show {
+            display: block;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .short-url-display {
+            font-size: 1.4em;
+            font-weight: 700;
+            padding: 15px;
+            background: rgba(46, 213, 115, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(46, 213, 115, 0.3);
+            border-radius: 15px;
+            color: #2ed573;
+            word-break: break-all;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+
+        .short-url-display:hover {
+            background: rgba(46, 213, 115, 0.25);
+            text-shadow: 0 0 15px rgba(46, 213, 115, 0.5);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 50px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-copy { background: #2ed573; color: white; }
+        .btn-qr { background: #ffa502; color: white; }
+        .btn-visit { background: #4facfe; color: white; }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 900;
+            text-shadow: 0 0 20px rgba(79, 172, 254, 0.6);
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 24px;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            z-index: 9999;
+            animation: slideIn 0.4s ease;
+            display: none;
+            backdrop-filter: blur(10px);
+            font-size: 0.9em;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast-success { background: rgba(46, 213, 115, 0.9); }
+        .toast-error { background: rgba(255, 71, 87, 0.9); }
+        .toast-info { background: rgba(79, 172, 254, 0.9); }
+
+        .qr-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .qr-modal.show { display: flex; }
+
+        .qr-box {
+            background: rgba(30,30,30,0.95);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 25px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .qr-box img {
+            border-radius: 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .qr-close {
+            margin-top: 15px;
+            padding: 10px 30px;
+            background: #ff4757;
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .footer-text {
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 0.75em;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 500px) {
+            .title { font-size: 1.8em; }
+            .logo-img { width: 85px; height: 85px; }
+            .action-btns { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-image"></div>
+    <div class="bg-overlay"></div>
+
+    <div class="main-content">
+
+        <div class="logo-container">
+            <img src="https://i.ibb.co/Tx9YtRXT/logo.png" alt="AHSAN Logo" class="logo-img" onerror="this.style.display='none'">
+        </div>
+
+        <h1 class="title">AHSAN URL SHORTENER</h1>
+        <p class="subtitle">Shorten • Share • Track</p>
+
+        <div class="input-wrapper">
+            <input type="url" class="url-input" id="longUrl" placeholder="Paste your long URL here..." autocomplete="off">
+        </div>
+
+        <input type="text" class="alias-input" id="customAlias" placeholder="Custom alias (optional, min 3 chars)" maxlength="30" autocomplete="off">
+        <span class="alias-hint">e.g., yt-reel → ahsan.link/yt-reel</span>
+
+        <button class="btn btn-shorten" id="shortenBtn" onclick="shortenUrl()">
+            ⚡ Shorten URL
+        </button>
+
+        <div class="result-area" id="resultArea">
+            <div class="short-url-display" id="shortUrlDisplay" onclick="copyShortUrl()" title="Click to copy"></div>
+            <div class="action-btns">
+                <button class="btn-action btn-copy" onclick="copyShortUrl()">📋 Copy</button>
+                <button class="btn-action btn-qr" onclick="generateQR()">📱 QR Code</button>
+                <button class="btn-action btn-visit" onclick="visitShortUrl()">🌐 Visit</button>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="stat-number" id="totalLinks">0</div>
+                <div class="stat-label">Links Created</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="totalClicks">0</div>
+                <div class="stat-label">Total Clicks</div>
+            </div>
+        </div>
+
+        <div class="footer-text">© 2025 AHSAN URL Shortener</div>
+    </div>
+
+    <div class="qr-modal" id="qrModal">
+        <div class="qr-box">
+            <h3 style="color:#4facfe;margin-bottom:15px;">📱 Scan QR Code</h3>
+            <img id="qrImage" src="" alt="QR Code" width="200" height="200">
+            <br>
+            <button class="qr-close" onclick="closeQR()">Close</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 🔥 NEW FIREBASE PROJECT - URL SHORTENER
+        const firebaseConfig = {
+            databaseURL: "https://ahsan-url-shortener-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let currentShortUrl = '';
+
+        function generateCode(len = 6) {
+            const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for (let i = 0; i < len; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+            return code;
+        }
+
+        window.shortenUrl = async function() {
+            const longUrl = document.getElementById('longUrl').value.trim();
+            const alias = document.getElementById('customAlias').value.trim().toLowerCase();
+            const btn = document.getElementById('shortenBtn');
+
+            if (!longUrl) return showToast('❌ Please enter a URL', 'error');
+            if (!longUrl.startsWith('http')) return showToast('❌ URL must start with http:// or https://', 'error');
+            
+            if (alias) {
+                const cleanAlias = alias.replace(/[^a-z0-9_-]/g, '');
+                if (cleanAlias !== alias) return showToast('❌ Only letters, numbers, hyphens, underscores', 'error');
+                if (cleanAlias.length < 3) return showToast('❌ Alias must be at least 3 characters', 'error');
+            }
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Shortening...';
+
+            try {
+                const code = alias || generateCode();
+                
+                if (alias) {
+                    const snap = await db.ref('urls/' + code).once('value');
+                    if (snap.exists()) {
+                        btn.disabled = false;
+                        btn.textContent = '⚡ Shorten URL';
+                        return showToast('❌ Alias "' + code + '" already taken!', 'error');
+                    }
+                }
+
+                await db.ref('urls/' + code).set({
+                    longUrl: longUrl,
+                    shortCode: code,
+                    createdAt: new Date().toISOString(),
+                    clicks: 0
+                });
+
+                const base = window.location.origin + window.location.pathname.replace('index.html', '');
+                currentShortUrl = base + '?r=' + code;
+
+                document.getElementById('shortUrlDisplay').textContent = currentShortUrl;
+                document.getElementById('resultArea').classList.add('show');
+                document.getElementById('longUrl').value = '';
+                document.getElementById('customAlias').value = '';
+
+                copyToClipboard(currentShortUrl);
+                showToast('✅ Shortened & Copied!', 'success');
+                loadStats();
+            } catch (e) {
+                console.error('Error:', e);
+                showToast('❌ Error: ' + e.message, 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = '⚡ Shorten URL';
+        };
+
+        window.copyShortUrl = () => {
+            if (currentShortUrl) { 
+                copyToClipboard(currentShortUrl); 
+                showToast('📋 Copied!', 'success'); 
+            }
+        };
+
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch(e) {}
+            document.body.removeChild(ta);
+        }
+
+        window.generateQR = () => {
+            if (currentShortUrl) {
+                document.getElementById('qrImage').src = 
+                    `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentShortUrl)}`;
+                document.getElementById('qrModal').classList.add('show');
+            }
+        };
+
+        window.closeQR = () => document.getElementById('qrModal').classList.remove('show');
+        
+        window.visitShortUrl = () => { 
+            if (currentShortUrl) window.open(currentShortUrl, '_blank'); 
+        };
+
+        function showToast(msg, type) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `toast toast-${type}`;
+            t.style.display = 'block';
+            clearTimeout(t.hide);
+            t.hide = setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        async function loadStats() {
+            try {
+                const ls = await db.ref('stats/links').once('value');
+                document.getElementById('totalLinks').textContent = ls.val() || 0;
+
+                const us = await db.ref('urls').once('value');
+                let clicks = 0;
+                if (us.val()) {
+                    Object.values(us.val()).forEach(u => clicks += (u.clicks || 0));
+                }
+                document.getElementById('totalClicks').textContent = clicks;
+            } catch (e) {
+                console.log('Stats will update soon...');
+            }
+        }
+
+        async function handleRedirect() {
+            const code = new URLSearchParams(window.location.search).get('r');
+            if (code) {
+                try {
+                    const snap = await db.ref('urls/' + code).once('value');
+                    const data = snap.val();
+                    if (data?.longUrl) {
+                        await db.ref('urls/' + code + '/clicks').set((data.clicks || 0) + 1);
+                        window.location.href = data.longUrl;
+                    }
+                } catch (e) {
+                    console.log('Redirect error');
+                }
+            }
+        }
+
+        document.getElementById('longUrl').addEventListener('keypress', e => { 
+            if (e.key === 'Enter') shortenUrl(); 
+        });
+        document.getElementById('customAlias').addEventListener('keypress', e => { 
+            if (e.key === 'Enter') shortenUrl(); 
+        });
+        
+        document.getElementById('qrModal').addEventListener('click', function(e) { 
+            if (e.target === this) closeQR(); 
+        });
+
+        loadStats();
+        handleRedirect();
+        
+        console.log('🚀 AHSAN URL Shortener Ready!');
+        console.log('🔗 Firebase: ahsan-url-shortener');
+    </script>
+</body>
+</html>
